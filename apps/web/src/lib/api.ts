@@ -44,7 +44,8 @@ function authHeaders(token?: string | null): HeadersInit {
 
 function apiPath(path: string) {
   const base = getApiUrl();
-  return `${base}${path}`;
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${base}/api${normalized}`;
 }
 
 async function parseError(res: Response) {

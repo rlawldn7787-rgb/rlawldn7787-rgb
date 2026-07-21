@@ -33,10 +33,14 @@ export async function createApp(): Promise<Express> {
   app.get("/health", (_req, res) => {
     res.json({ ok: true, service: "woohaeng-board-api" });
   });
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, service: "woohaeng-board-api" });
+  });
 
-  app.use("/auth", json, authRouter);
-  app.use("/records", json, recordsRouter);
-  app.use("/admin", json, adminRouter);
+  // Next.js 페이지(/records, /admin)와 경로가 겹치지 않도록 /api 접두사 사용
+  app.use("/api/auth", json, authRouter);
+  app.use("/api/records", json, recordsRouter);
+  app.use("/api/admin", json, adminRouter);
 
   return app;
 }

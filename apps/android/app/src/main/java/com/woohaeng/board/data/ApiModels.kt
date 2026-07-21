@@ -57,26 +57,26 @@ data class RecordResponse(val record: RecordDto)
 data class ErrorResponse(val error: String?)
 
 interface ApiService {
-    @POST("auth/login")
+    @POST("api/auth/login")
     suspend fun login(@Body body: LoginRequest): LoginResponse
 
-    @GET("auth/me")
+    @GET("api/auth/me")
     suspend fun me(@Header("Authorization") auth: String): MeResponse
 
-    @GET("records")
+    @GET("api/records")
     suspend fun records(
         @Header("Authorization") auth: String,
         @QueryMap params: Map<String, String>
     ): RecordsResponse
 
-    @GET("records/{id}")
+    @GET("api/records/{id}")
     suspend fun record(
         @Header("Authorization") auth: String,
         @Path("id") id: Int
     ): RecordResponse
 
     @Multipart
-    @POST("records")
+    @POST("api/records")
     suspend fun createRecord(
         @Header("Authorization") auth: String,
         @Part("workName") workName: RequestBody,
@@ -88,7 +88,7 @@ interface ApiService {
     ): RecordResponse
 
     @Streaming
-    @GET("records/export.xlsx")
+    @GET("api/records/export.xlsx")
     suspend fun exportExcel(
         @Header("Authorization") auth: String,
         @QueryMap params: Map<String, String>
