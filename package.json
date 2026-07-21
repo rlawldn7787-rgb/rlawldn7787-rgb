@@ -1,0 +1,15 @@
+{
+  "name": "woohaeng-board",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @woohaeng/api",
+    "dev:web": "npm run dev -w @woohaeng/web",
+    "build": "npm run build -w @woohaeng/api && npm run build -w @woohaeng/web",
+    "start:api": "npm run start -w @woohaeng/api"
+  }
+}

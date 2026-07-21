@@ -1,0 +1,10 @@
+# 우행통신 보드판 API (Railway)
+# Railway 대시보드에서 Root Directory를 `apps/api` 로 설정하세요.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"
