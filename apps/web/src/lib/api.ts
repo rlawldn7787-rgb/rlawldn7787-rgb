@@ -1,6 +1,15 @@
-/** 통합 배포 시 비워 두면 브라우저가 같은 주소로 API를 호출합니다. */
+/**
+ * API base URL.
+ * - Railway 통합 배포: NEXT_PUBLIC_API_URL 비우기 → 같은 도메인(/auth 등)으로 호출
+ * - 로컬에서 API만 4000으로 띄울 때: NEXT_PUBLIC_API_URL=http://localhost:4000
+ * - 빌드에 localhost가 잘못 박혀 있어도 브라우저에서는 무시하고 같은 도메인 사용
+ */
 export function getApiUrl() {
-  return (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+  const raw = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+  if (!raw || /localhost|127\.0\.0\.1/.test(raw)) {
+    return "";
+  }
+  return raw;
 }
 
 export const API_URL = getApiUrl();
@@ -33,6 +42,11 @@ function authHeaders(token?: string | null): HeadersInit {
   return headers;
 }
 
+function apiPath(path: string) {
+  const base = getApiUrl();
+  return `${base}${path}`;
+}
+
 async function parseError(res: Response) {
   try {
     const data = await res.json();
@@ -43,16 +57,19 @@ async function parseError(res: Response) {
 }
 
 export async function login(username: string, password: string) {
+  const url = apiPath("/auth/login");
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/auth/login`, {
+    res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
   } catch {
+    const shown =
+      typeof window !== "undefined" ? window.location.origin : url || "(same origin)";
     throw new Error(
-      `서버에 연결할 수 없습니다. API(${API_URL})가 실행 중인지 확인하세요.`
+      `서버에 연결할 수 없습니다. API(${shown})에 연결하지 못했습니다.`
     );
   }
   if (!res.ok) throw new Error(await parseError(res));
@@ -60,7 +77,7 @@ export async function login(username: string, password: string) {
 }
 
 export async function fetchMe(token: string) {
-  const res = await fetch(`${API_URL}/auth/me`, {
+  const res = await fetch(apiPath("/auth/me"), {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(await parseError(res));
@@ -72,7 +89,7 @@ export async function fetchRecords(
   params: Record<string, string>
 ) {
   const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${API_URL}/records${qs ? `?${qs}` : ""}`, {
+  const res = await fetch(apiPath(`/records${qs ? `?${qs}` : ""}`), {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(await parseError(res));
@@ -80,7 +97,7 @@ export async function fetchRecords(
 }
 
 export async function fetchRecord(token: string, id: number) {
-  const res = await fetch(`${API_URL}/records/${id}`, {
+  const res = await fetch(apiPath(`/records/${id}`), {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(await parseError(res));
@@ -93,7 +110,7 @@ export async function downloadExcel(
 ) {
   const qs = new URLSearchParams(params).toString();
   const res = await fetch(
-    `${API_URL}/records/export.xlsx${qs ? `?${qs}` : ""}`,
+    apiPath(`/records/export.xlsx${qs ? `?${qs}` : ""}`),
     { headers: authHeaders(token) }
   );
   if (!res.ok) throw new Error(await parseError(res));
@@ -101,7 +118,7 @@ export async function downloadExcel(
 }
 
 export async function fetchUsers(token: string) {
-  const res = await fetch(`${API_URL}/admin/users`, {
+  const res = await fetch(apiPath("/admin/users"), {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(await parseError(res));
@@ -126,7 +143,7 @@ export async function createUser(
     role: "worker" | "admin";
   }
 ) {
-  const res = await fetch(`${API_URL}/admin/users`, {
+  const res = await fetch(apiPath("/admin/users"), {
     method: "POST",
     headers: {
       ...authHeaders(token),
@@ -143,7 +160,7 @@ export async function patchUser(
   id: number,
   body: { active?: boolean; name?: string; password?: string; role?: string }
 ) {
-  const res = await fetch(`${API_URL}/admin/users/${id}`, {
+  const res = await fetch(apiPath(`/admin/users/${id}`), {
     method: "PATCH",
     headers: {
       ...authHeaders(token),
