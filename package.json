@@ -9,7 +9,9 @@
   "scripts": {
     "dev:api": "npm run dev -w @woohaeng/api",
     "dev:web": "npm run dev -w @woohaeng/web",
-    "build": "npm run build -w @woohaeng/api && npm run build -w @woohaeng/web",
+    "build": "npm run build -w @woohaeng/web",
+    "start": "npm run start -w @woohaeng/web",
+    "build:api": "npm run build -w @woohaeng/api",
     "start:api": "npm run start -w @woohaeng/api"
   }
 }
