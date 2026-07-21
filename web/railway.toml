@@ -1,0 +1,10 @@
+# 우행통신 보드판 웹 (Railway)
+# Root Directory: apps/web
+# Variables: NEXT_PUBLIC_API_URL=https://<api-service>.up.railway.app
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
