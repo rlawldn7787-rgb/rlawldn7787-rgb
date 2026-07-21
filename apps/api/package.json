@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "main": "dist/index.js",
+  "exports": {
+    "./app": "./dist/app.js"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",

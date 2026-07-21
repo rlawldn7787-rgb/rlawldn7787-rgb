@@ -3,7 +3,9 @@ import path from "path";
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
 
-const uploadsDir = path.resolve(process.cwd(), "uploads");
+const uploadsDir = path.resolve(
+  process.env.UPLOADS_DIR || path.join(process.cwd(), "uploads")
+);
 
 function hasR2() {
   return Boolean(
@@ -60,10 +62,12 @@ export function publicUrlForKey(key: string): string {
   if (hasR2() && process.env.R2_PUBLIC_BASE_URL) {
     return `${process.env.R2_PUBLIC_BASE_URL.replace(/\/$/, "")}/${key}`;
   }
-  const base = (process.env.PUBLIC_API_URL || "http://localhost:4000").replace(
-    /\/$/,
-    ""
-  );
+  const base = (
+    process.env.PUBLIC_API_URL ||
+    (process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : "http://localhost:3000")
+  ).replace(/\/$/, "");
   return `${base}/uploads/${key}`;
 }
 

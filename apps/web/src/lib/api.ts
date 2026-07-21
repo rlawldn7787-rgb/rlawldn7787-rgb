@@ -1,5 +1,9 @@
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:4000";
+/** 통합 배포 시 비워 두면 브라우저가 같은 주소로 API를 호출합니다. */
+export function getApiUrl() {
+  return (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+}
+
+export const API_URL = getApiUrl();
 
 export type User = {
   id: number;

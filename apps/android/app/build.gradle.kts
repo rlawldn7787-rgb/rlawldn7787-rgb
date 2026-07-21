@@ -14,7 +14,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:4000\"")
+        buildConfigField("String", "API_BASE_URL", "\"https://rlawldn7787-rgb-production.up.railway.app\"")
     }
 
     buildTypes {
@@ -24,12 +24,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Railway 배포 URL로 교체하세요
-            buildConfigField("String", "API_BASE_URL", "\"https://YOUR-API.up.railway.app\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://rlawldn7787-rgb-production.up.railway.app\"")
         }
         debug {
-            // 실기기(같은 Wi-Fi): PC LAN IP. USB adb reverse 사용 시 127.0.0.1로 바꿔도 됨
-            buildConfigField("String", "API_BASE_URL", "\"http://192.168.0.12:4000\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://rlawldn7787-rgb-production.up.railway.app\"")
         }
     }
 

@@ -1,0 +1,18 @@
+# 우행통신 보드판 — 웹+API 통합 (한 Railway 서비스)
+# Root Directory: 저장소 루트 `/`
+# Variables 예:
+#   DATABASE_URL=${{Postgres.DATABASE_URL}}
+#   DATABASE_SSL=true
+#   JWT_SECRET=...
+#   ADMIN_USERNAME=admin
+#   ADMIN_PASSWORD=...
+#   PUBLIC_API_URL=https://rlawldn7787-rgb-production.up.railway.app
+#   NEXT_PUBLIC_API_URL=   (비워 두면 브라우저에서 같은 주소로 API 호출)
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"
