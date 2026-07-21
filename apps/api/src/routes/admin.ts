@@ -126,3 +126,41 @@ adminRouter.patch("/users/:id", async (req, res) => {
     },
   });
 });
+
+/** 기록에 사용된 공종 목록 (건수 포함) */
+adminRouter.get("/work-types", async (_req, res) => {
+  const result = await pool.query(
+    `SELECT TRIM(work_type) AS work_type, COUNT(*)::int AS count
+     FROM records
+     WHERE TRIM(work_type) <> ''
+     GROUP BY TRIM(work_type)
+     ORDER BY count DESC, work_type ASC`
+  );
+  return res.json({
+    workTypes: result.rows.map((row) => ({
+      name: String(row.work_type),
+      count: Number(row.count),
+    })),
+  });
+});
+
+/** 해당 공종으로 등록된 기록 전체 삭제 */
+adminRouter.delete("/work-types", async (req, res) => {
+  const name =
+    typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  if (!name) {
+    return res.status(400).json({ error: "공종 이름이 필요합니다." });
+  }
+
+  const result = await pool.query(
+    `DELETE FROM records
+     WHERE TRIM(work_type) = $1
+     RETURNING id`,
+    [name]
+  );
+
+  return res.json({
+    deleted: result.rowCount ?? result.rows.length,
+    name,
+  });
+});

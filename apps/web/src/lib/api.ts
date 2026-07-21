@@ -172,3 +172,35 @@ export async function patchUser(
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
+
+export async function fetchWorkTypes(token: string) {
+  const res = await fetch(apiPath("/admin/work-types"), {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json() as Promise<{
+    workTypes: Array<{ name: string; count: number }>;
+  }>;
+}
+
+export async function deleteWorkType(token: string, name: string) {
+  const res = await fetch(apiPath("/admin/work-types"), {
+    method: "DELETE",
+    headers: {
+      ...authHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json() as Promise<{ deleted: number; name: string }>;
+}
+
+export async function deleteRecord(token: string, id: number) {
+  const res = await fetch(apiPath(`/records/${id}`), {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json() as Promise<{ ok: boolean; id: number }>;
+}

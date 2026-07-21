@@ -97,6 +97,17 @@ select {
   background: transparent;
 }
 
+.btn.danger {
+  background: #fff5f4;
+  border-color: #f0b4ae;
+  color: var(--danger);
+}
+
+.btn.danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);

@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import sharp from "sharp";
 import { z } from "zod";
-import { requireAuth } from "../auth";
+import { requireAdmin, requireAuth } from "../auth";
 import { pool } from "../db";
 import { buildRecordsExcel } from "../excel";
 import { publicUrlForKey, uploadBuffer } from "../storage";
@@ -191,3 +191,15 @@ recordsRouter.post(
     }
   }
 );
+
+recordsRouter.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  const result = await pool.query(
+    `DELETE FROM records WHERE id = $1 RETURNING id`,
+    [id]
+  );
+  if (!result.rows[0]) {
+    return res.status(404).json({ error: "기록을 찾을 수 없습니다." });
+  }
+  return res.json({ ok: true, id });
+});
