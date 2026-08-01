@@ -98,7 +98,6 @@ fun RecordDetailScreen(vm: AppViewModel, id: Int, onBack: () -> Unit) {
                         MetaRow("공종", item.workType.ifBlank { "-" })
                         MetaRow("위치", item.location.ifBlank { "-" })
                         MetaRow("내용", item.content.ifBlank { "-" })
-                        MetaRow("작성자", item.authorName)
                     }
                 }
             }

@@ -283,7 +283,7 @@ fun RecordsScreen(
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(item.workName, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    "${item.workDate.take(10)} · ${item.authorName}",
+                                    item.workDate.take(10),
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(top = 4.dp)
                                 )

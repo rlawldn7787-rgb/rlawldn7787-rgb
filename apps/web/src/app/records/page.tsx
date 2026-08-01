@@ -153,7 +153,7 @@ export default function RecordsPage() {
               <div className="body">
                 <strong>{r.workName}</strong>
                 <div className="meta">
-                  {String(r.workDate).slice(0, 10)} · {r.authorName}
+                  {String(r.workDate).slice(0, 10)}
                 </div>
                 {r.workType ? <span className="tag">{r.workType}</span> : null}
                 <div className="meta">{r.location || "위치 미입력"}</div>

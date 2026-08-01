@@ -83,12 +83,6 @@ export default function RecordDetailPage() {
                 <span>{record.content || "-"}</span>
               </div>
               <div className="meta-row">
-                <span>작성자</span>
-                <span>
-                  {record.authorName} ({record.authorUsername})
-                </span>
-              </div>
-              <div className="meta-row">
                 <span>업로드</span>
                 <span>
                   {new Date(record.createdAt).toLocaleString("ko-KR")}
