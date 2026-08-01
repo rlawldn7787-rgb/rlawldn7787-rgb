@@ -26,10 +26,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="shell">
       <header className="topbar">
         <div className="brand">
-          <strong>우행통신 보드판</strong>
-          <span>
-            {user.name} ({user.role === "admin" ? "관리자" : "직원"})
-          </span>
+          <img className="brand-mark" src="/icon.png" alt="우행통신" />
+          <div className="brand-text">
+            <strong>우행통신 보드판</strong>
+            <span>
+              {user.name} · {user.role === "admin" ? "관리자" : "직원"}
+            </span>
+          </div>
         </div>
         <nav className="nav">
           <Link
@@ -43,10 +46,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               href="/admin"
               className={pathname.startsWith("/admin") ? "active" : ""}
             >
-              계정관리
+              관리
             </Link>
           ) : null}
-          <button type="button" onClick={logout}>
+          <button type="button" className="btn ghost" onClick={logout}>
             로그아웃
           </button>
         </nav>

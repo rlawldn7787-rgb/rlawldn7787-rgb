@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
+import { IBM_Plex_Sans_KR, Outfit } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const plex = IBM_Plex_Sans_KR({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-plex",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "우행통신 보드판",
@@ -32,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={`${outfit.variable} ${plex.variable}`}>
       <body>
         <AuthProvider>{children}</AuthProvider>
       </body>

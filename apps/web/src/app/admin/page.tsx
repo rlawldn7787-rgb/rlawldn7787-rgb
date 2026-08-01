@@ -107,10 +107,15 @@ export default function AdminPage() {
 
   return (
     <AppShell>
-      <div className="grid">
+      <div className="grid two">
         <section className="panel">
-          <h2>직원 계정 생성</h2>
-          <form className="stack" onSubmit={onCreate} style={{ marginTop: 12 }}>
+          <div className="panel-head">
+            <div>
+              <h2>직원 계정 생성</h2>
+              <p>현장 직원·관리자 계정을 추가합니다.</p>
+            </div>
+          </div>
+          <form className="stack" onSubmit={onCreate}>
             <label>
               아이디
               <input
@@ -156,7 +161,12 @@ export default function AdminPage() {
         </section>
 
         <section className="panel">
-          <h2>계정 목록</h2>
+          <div className="panel-head">
+            <div>
+              <h2>계정 목록</h2>
+              <p>권한·활성 상태를 관리합니다.</p>
+            </div>
+          </div>
           {error ? <p className="error">{error}</p> : null}
           {message ? <p className="muted">{message}</p> : null}
           <table className="table">
@@ -192,11 +202,15 @@ export default function AdminPage() {
         </section>
 
         <section className="panel" style={{ gridColumn: "1 / -1" }}>
-          <h2>공종 관리</h2>
-          <p className="muted" style={{ marginTop: 8 }}>
-            기록에 사용된 공종 목록입니다. 삭제하면 해당 공종으로 올라온 사진
-            기록이 모두 지워집니다.
-          </p>
+          <div className="panel-head">
+            <div>
+              <h2>공종 관리</h2>
+              <p>
+                기록에 사용된 공종 목록입니다. 삭제하면 해당 공종 기록이 모두
+                지워집니다.
+              </p>
+            </div>
+          </div>
           {workTypes.length === 0 ? (
             <p className="muted" style={{ marginTop: 12 }}>
               등록된 공종이 없습니다.

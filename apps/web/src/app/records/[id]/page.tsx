@@ -64,21 +64,35 @@ export default function RecordDetailPage() {
         {record ? (
           <>
             <img src={record.photoUrl} alt={record.workName} />
-            <div className="grid">
-              <div>
-                <strong>{record.workName}</strong>
+            <div className="detail-meta">
+              <strong>{record.workName}</strong>
+              <div className="meta-row">
+                <span>일자</span>
+                <span>{String(record.workDate).slice(0, 10)}</span>
               </div>
-              <div className="meta">
-                일자: {String(record.workDate).slice(0, 10)}
+              <div className="meta-row">
+                <span>공종</span>
+                <span>{record.workType || "-"}</span>
               </div>
-              <div className="meta">공종: {record.workType || "-"}</div>
-              <div className="meta">위치: {record.location || "-"}</div>
-              <div className="meta">내용: {record.content || "-"}</div>
-              <div className="meta">
-                작성자: {record.authorName} ({record.authorUsername})
+              <div className="meta-row">
+                <span>위치</span>
+                <span>{record.location || "-"}</span>
               </div>
-              <div className="meta">
-                업로드: {new Date(record.createdAt).toLocaleString("ko-KR")}
+              <div className="meta-row">
+                <span>내용</span>
+                <span>{record.content || "-"}</span>
+              </div>
+              <div className="meta-row">
+                <span>작성자</span>
+                <span>
+                  {record.authorName} ({record.authorUsername})
+                </span>
+              </div>
+              <div className="meta-row">
+                <span>업로드</span>
+                <span>
+                  {new Date(record.createdAt).toLocaleString("ko-KR")}
+                </span>
               </div>
             </div>
           </>

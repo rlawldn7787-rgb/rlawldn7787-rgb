@@ -69,6 +69,16 @@ export default function RecordsPage() {
   return (
     <AppShell>
       <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>현장 기록</h2>
+            <p>사진 보드판 기록을 조회하고 엑셀로 내려받으세요.</p>
+          </div>
+          {!loading ? (
+            <span className="muted">{records.length}건</span>
+          ) : null}
+        </div>
+
         <div className="filters">
           <label>
             시작일
@@ -91,7 +101,7 @@ export default function RecordsPage() {
             <input
               value={workName}
               onChange={(e) => setWorkName(e.target.value)}
-              placeholder="검색"
+              placeholder="검색어 입력"
             />
           </label>
           <div className="actions">
@@ -103,26 +113,24 @@ export default function RecordsPage() {
             </button>
           </div>
         </div>
+
         {error ? <p className="error">{error}</p> : null}
         {loading ? <p className="muted">불러오는 중...</p> : null}
         {!loading && records.length === 0 ? (
-          <p className="muted">조건에 맞는 기록이 없습니다.</p>
+          <div className="empty-state">조건에 맞는 기록이 없습니다.</div>
         ) : null}
+
         <div className="records">
           {records.map((r) => (
             <Link key={r.id} href={`/records/${r.id}`} className="card">
-              <img
-                src={r.photoThumbUrl || r.photoUrl}
-                alt={r.workName}
-              />
+              <img src={r.photoThumbUrl || r.photoUrl} alt={r.workName} />
               <div className="body">
                 <strong>{r.workName}</strong>
                 <div className="meta">
                   {String(r.workDate).slice(0, 10)} · {r.authorName}
                 </div>
-                <div className="meta">
-                  {r.workType || "-"} / {r.location || "-"}
-                </div>
+                {r.workType ? <span className="tag">{r.workType}</span> : null}
+                <div className="meta">{r.location || "위치 미입력"}</div>
               </div>
             </Link>
           ))}

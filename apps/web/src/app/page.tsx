@@ -34,10 +34,12 @@ export default function LoginPage() {
 
   return (
     <div className="login-wrap">
-      <form className="panel login-card stack" onSubmit={onSubmit}>
-        <div>
-          <h1>우행통신 보드판</h1>
-          <p>현장 기록 조회 · 엑셀 다운로드</p>
+      <div className="login-signal" aria-hidden />
+      <form className="login-card stack" onSubmit={onSubmit}>
+        <div className="login-brand">
+          <img src="/icon.png" alt="우행통신" />
+          <h1>우행통신</h1>
+          <p>현장 보드판 기록 · 조회 · 엑셀</p>
         </div>
         <label>
           아이디
@@ -59,7 +61,7 @@ export default function LoginPage() {
           />
         </label>
         {error ? <div className="error">{error}</div> : null}
-        <button className="btn primary" type="submit" disabled={submitting}>
+        <button className="btn cyan" type="submit" disabled={submitting}>
           {submitting ? "로그인 중..." : "로그인"}
         </button>
       </form>
