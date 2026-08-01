@@ -92,6 +92,6 @@ interface ApiService {
     @GET("api/records/export.xlsx")
     suspend fun exportExcel(
         @Header("Authorization") auth: String,
-        @QueryMap params: Map<String, String>
-    ): ResponseBody
+        @QueryMap params: @JvmSuppressWildcards Map<String, String>
+    ): Response<ResponseBody>
 }

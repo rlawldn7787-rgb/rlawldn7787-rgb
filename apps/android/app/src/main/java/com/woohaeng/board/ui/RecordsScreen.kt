@@ -43,11 +43,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.content.Intent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.woohaeng.board.util.resolveMediaUrl
@@ -62,6 +64,7 @@ fun RecordsScreen(
     onOpen: (Int) -> Unit,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
     val records by vm.records.collectAsState()
     val pending by vm.pendingCount.collectAsState()
     val message by vm.message.collectAsState()
@@ -119,7 +122,17 @@ fun RecordsScreen(
                     IconButton(
                         onClick = {
                             val (from, to) = monthBounds()
-                            vm.exportExcel(from, to, workName)
+                            vm.exportExcel(from, to, workName) { uri ->
+                                val send = Intent(Intent.ACTION_SEND).apply {
+                                    type =
+                                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(
+                                    Intent.createChooser(send, "엑셀 공유")
+                                )
+                            }
                         }
                     ) {
                         Icon(Icons.Default.Download, contentDescription = "엑셀")

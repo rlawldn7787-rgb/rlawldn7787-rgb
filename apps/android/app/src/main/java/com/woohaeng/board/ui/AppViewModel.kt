@@ -1,7 +1,6 @@
 package com.woohaeng.board.ui
 
 import android.app.Application
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -19,6 +18,7 @@ import com.woohaeng.board.data.UploadQueue
 import com.woohaeng.board.util.BoardCompositor
 import com.woohaeng.board.util.BoardFields
 import com.woohaeng.board.util.BoardLayout
+import com.woohaeng.board.util.ExcelDownloader
 import com.woohaeng.board.util.GallerySaver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -372,37 +372,82 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun exportExcel(from: String?, to: String?, workName: String?) {
-        val t = token.value ?: return
+    /**
+     * 엑셀을 받아 캐시(+다운로드 폴더)에 저장한 뒤, 공유용 Uri를 콜백으로 넘깁니다.
+     * startActivity는 Activity 컨텍스트에서 해야 해서 UI에서 공유 인텐트를 띄웁니다.
+     */
+    fun exportExcel(
+        from: String?,
+        to: String?,
+        workName: String?,
+        onReady: (Uri) -> Unit
+    ) {
+        val t = token.value
+        if (t.isNullOrBlank()) {
+            message.value = "로그인이 필요합니다"
+            return
+        }
         viewModelScope.launch {
             busy.value = true
             try {
-                val params = mutableMapOf<String, String>()
+                val params = linkedMapOf<String, String>()
                 from?.takeIf { it.isNotBlank() }?.let { params["from"] = it }
                 to?.takeIf { it.isNotBlank() }?.let { params["to"] = it }
                 workName?.takeIf { it.isNotBlank() }?.let { params["workName"] = it }
-                val body = ApiClient.api.exportExcel("Bearer $t", params)
-                val out = File(
-                    getApplication<Application>().cacheDir,
-                    "woohaeng_records.xlsx"
-                )
-                out.outputStream().use { body.byteStream().copyTo(it) }
+
+                val response = ApiClient.api.exportExcel("Bearer $t", params)
+                if (!response.isSuccessful) {
+                    val err = runCatching { response.errorBody()?.string() }.getOrNull()
+                    if (response.code() == 401) {
+                        handleUnauthorized(err ?: "401")
+                        message.value = "로그인이 만료되었습니다. 다시 로그인해 주세요."
+                    } else {
+                        message.value =
+                            "엑셀 다운로드 실패 (${response.code()})" +
+                                if (!err.isNullOrBlank()) ": $err" else ""
+                    }
+                    return@launch
+                }
+
+                val body = response.body()
+                if (body == null) {
+                    message.value = "엑셀 다운로드 실패: 응답이 비어 있습니다"
+                    return@launch
+                }
+
+                val app = getApplication<Application>()
+                val out = body.byteStream().use { ExcelDownloader.saveToCache(app, it) }
+                if (!out.exists() || out.length() < 64) {
+                    message.value = "엑셀 다운로드 실패: 파일이 비어 있습니다"
+                    return@launch
+                }
+
+                // ZIP/XLSX 시그니처(PK) 확인 — HTML/JSON 오류 페이지 저장 방지
+                val header = out.inputStream().use { stream ->
+                    ByteArray(2).also { stream.read(it) }
+                }
+                if (header[0] != 'P'.code.toByte() || header[1] != 'K'.code.toByte()) {
+                    val preview = out.readText().take(180)
+                    message.value = "엑셀 다운로드 실패: 서버가 파일이 아닌 응답을 보냈습니다. $preview"
+                    out.delete()
+                    return@launch
+                }
+
+                ExcelDownloader.saveToDownloads(app, out)
                 val uri = FileProvider.getUriForFile(
-                    getApplication(),
-                    "${getApplication<Application>().packageName}.fileprovider",
+                    app,
+                    "${app.packageName}.fileprovider",
                     out
                 )
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                getApplication<Application>().startActivity(
-                    Intent.createChooser(intent, "엑셀 공유").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
+                message.value = "엑셀 저장 완료 · 공유할 앱을 선택하세요"
+                onReady(uri)
+            } catch (e: HttpException) {
+                val err = runCatching { e.response()?.errorBody()?.string() }.getOrNull()
+                message.value =
+                    "엑셀 다운로드 실패 (${e.code()})" +
+                        if (!err.isNullOrBlank()) ": $err" else ""
             } catch (e: Exception) {
-                message.value = e.message ?: "엑셀 다운로드 실패"
+                message.value = "엑셀 다운로드 실패: ${e.message ?: e.javaClass.simpleName}"
             } finally {
                 busy.value = false
             }

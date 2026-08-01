@@ -12,8 +12,8 @@ android {
         applicationId = "com.woohaeng.board"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.0.8"
+        versionCode = 10
+        versionName = "1.0.9"
         buildConfigField("String", "API_BASE_URL", "\"https://rlawldn7787-rgb-production.up.railway.app\"")
     }
 
