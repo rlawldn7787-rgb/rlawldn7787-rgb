@@ -38,8 +38,12 @@ export async function createApp(): Promise<Express> {
   });
 
   // Next.js 페이지(/records, /admin)와 경로가 겹치지 않도록 /api 접두사 사용
+  // multipart 업로드는 express.json이 body를 건드리지 않도록 JSON만 선택 적용
   app.use("/api/auth", json, authRouter);
-  app.use("/api/records", json, recordsRouter);
+  app.use("/api/records", (req, res, next) => {
+    if (req.is("multipart/form-data")) return next();
+    return json(req, res, next);
+  }, recordsRouter);
   app.use("/api/admin", json, adminRouter);
 
   return app;

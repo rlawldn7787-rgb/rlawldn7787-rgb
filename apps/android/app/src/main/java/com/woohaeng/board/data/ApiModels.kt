@@ -4,6 +4,7 @@ import com.squareup.moshi.JsonClass
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -85,7 +86,7 @@ interface ApiService {
         @Part("content") content: RequestBody,
         @Part("workDate") workDate: RequestBody,
         @Part image: MultipartBody.Part
-    ): RecordResponse
+    ): Response<ResponseBody>
 
     @Streaming
     @GET("api/records/export.xlsx")

@@ -17,6 +17,12 @@ const plex = IBM_Plex_Sans_KR({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : "https://rlawldn7787-rgb-production.up.railway.app")
+  ),
   title: "우행통신 보드판",
   description: "현장 사진 보드판 기록 및 엑셀 정리",
   icons: {

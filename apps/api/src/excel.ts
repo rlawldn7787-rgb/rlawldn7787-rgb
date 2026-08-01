@@ -256,10 +256,11 @@ export async function buildRecordsExcel(
 
     try {
       const raw = await getObjectBuffer(row.photo_key);
-      if (!raw) {
+      if (!raw || raw.length < 32) {
         photoCell.value = "(사진 없음)";
       } else {
-        const thumb = await sharp(raw)
+        // 손상 JPEG도 최대한 복구 후 재인코딩
+        const thumb = await sharp(raw, { failOn: "none" })
           .rotate()
           .resize({
             width: photoW * 2,
@@ -267,11 +268,11 @@ export async function buildRecordsExcel(
             fit: "inside",
             withoutEnlargement: true,
           })
-          .jpeg({ quality: 85 })
+          .jpeg({ quality: 85, mozjpeg: true })
           .toBuffer();
 
         const imageId = workbook.addImage({
-          buffer: Uint8Array.from(thumb) as unknown as ExcelJS.Buffer,
+          buffer: Buffer.from(thumb) as unknown as ExcelJS.Buffer,
           extension: "jpeg",
         });
 
@@ -282,7 +283,10 @@ export async function buildRecordsExcel(
         });
       }
     } catch (err) {
-      console.warn("Failed to embed photo sheet image", ref, err);
+      console.warn(
+        `사진 시트 이미지 ${ref} 삽입 실패`,
+        err instanceof Error ? err.message : err
+      );
       photoCell.value = "(사진 불러오기 실패)";
     }
 

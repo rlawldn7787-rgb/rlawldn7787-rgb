@@ -149,13 +149,24 @@ recordsRouter.post(
         return res.status(400).json({ error: "사진 파일이 필요합니다." });
       }
 
-      const imageBuffer = req.file.buffer;
+      // 폰 JPEG 이상 마커/회전 메타를 정규화해 저장 (엑셀·썸네일 깨짐 방지)
+      let imageBuffer: Buffer;
+      try {
+        imageBuffer = await sharp(req.file.buffer)
+          .rotate()
+          .jpeg({ quality: 85, mozjpeg: true })
+          .toBuffer();
+      } catch (err) {
+        console.error("Invalid image upload", err);
+        return res.status(400).json({
+          error: "사진 파일이 손상되었거나 지원하지 않는 형식입니다.",
+        });
+      }
       const photoKey = await uploadBuffer(imageBuffer, "jpg", "image/jpeg");
 
       let thumbKey: string | null = null;
       try {
         const thumb = await sharp(imageBuffer)
-          .rotate()
           .resize({ width: 480, withoutEnlargement: true })
           .jpeg({ quality: 75 })
           .toBuffer();
@@ -188,10 +199,18 @@ recordsRouter.post(
         author_username: req.user!.username,
       };
 
+      console.log(
+        `Upload ok id=${row.id} user=${req.user!.id} bytes=${imageBuffer.length}`
+      );
       return res.status(201).json({ record: mapRecord(row) });
     } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "업로드에 실패했습니다." });
+      console.error("Upload failed", err);
+      return res.status(500).json({
+        error:
+          err instanceof Error
+            ? `업로드에 실패했습니다: ${err.message}`
+            : "업로드에 실패했습니다.",
+      });
     }
   }
 );

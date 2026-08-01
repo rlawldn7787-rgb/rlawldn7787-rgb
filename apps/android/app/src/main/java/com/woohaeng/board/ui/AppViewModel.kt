@@ -29,11 +29,13 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.HttpException
 import java.io.File
 import java.io.FileOutputStream
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.UUID
+import kotlin.math.max
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val session = SessionStore(app)
@@ -109,9 +111,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 workName?.takeIf { it.isNotBlank() }?.let { params["workName"] = it }
                 records.value = ApiClient.api.records("Bearer $t", params).records
-                message.value = null
+                // 업로드 오류 문구는 유지 (목록 조회 성공으로 지우지 않음)
             } catch (e: Exception) {
-                message.value = e.message ?: "목록 조회 실패"
+                if (message.value.isNullOrBlank()) {
+                    message.value = e.message ?: "목록 조회 실패"
+                }
             } finally {
                 busy.value = false
             }
@@ -153,15 +157,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             GallerySaver.saveJpeg(app, composed, "보드판")
         }
 
-        val file = File(getApplication<Application>().cacheDir, "upload_${UUID.randomUUID()}.jpg")
-        FileOutputStream(file).use { out ->
-            composed.compress(Bitmap.CompressFormat.JPEG, 90, out)
-        }
+        val file = prepareUploadFile(composed)
 
         viewModelScope.launch {
             busy.value = true
-            val ok = tryUpload(file, workName, workType, location, content, workDate)
-            if (!ok) {
+            val result = tryUpload(file, workName, workType, location, content, workDate)
+            if (!result.ok) {
                 queue.enqueue(
                     PendingUpload(
                         id = UUID.randomUUID().toString(),
@@ -174,12 +175,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 )
                 refreshPendingCount()
+                val reason = result.error ?: "알 수 없는 오류"
                 message.value = if (saveToGallery) {
-                    "갤러리 저장됨 · 네트워크 오류로 대기열에 저장했습니다."
+                    "갤러리 저장됨 · 업로드 실패로 대기열에 저장: $reason"
                 } else {
-                    "네트워크 오류로 대기열에 저장했습니다."
+                    "업로드 실패로 대기열에 저장: $reason"
                 }
             } else {
+                // 성공한 임시 파일은 정리
+                runCatching { file.delete() }
                 message.value = if (saveToGallery) {
                     "업로드 완료 · 원본/보드판 사진을 갤러리에 저장했습니다."
                 } else {
@@ -188,8 +192,34 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 loadRecords()
             }
             busy.value = false
-            onDone(ok)
+            onDone(result.ok)
         }
+    }
+
+    private data class UploadResult(val ok: Boolean, val error: String? = null)
+
+    private fun prepareUploadFile(bitmap: Bitmap): File {
+        val maxSide = 1920
+        val longest = max(bitmap.width, bitmap.height).toFloat()
+        val scaled =
+            if (longest > maxSide) {
+                val ratio = maxSide / longest
+                Bitmap.createScaledBitmap(
+                    bitmap,
+                    (bitmap.width * ratio).toInt().coerceAtLeast(1),
+                    (bitmap.height * ratio).toInt().coerceAtLeast(1),
+                    true
+                )
+            } else {
+                bitmap
+            }
+        val dir = File(getApplication<Application>().filesDir, "pending_images").apply { mkdirs() }
+        val file = File(dir, "upload_${UUID.randomUUID()}.jpg")
+        FileOutputStream(file).use { out ->
+            scaled.compress(Bitmap.CompressFormat.JPEG, 82, out)
+        }
+        if (scaled !== bitmap) scaled.recycle()
+        return file
     }
 
     private suspend fun tryUpload(
@@ -199,13 +229,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         location: String,
         content: String,
         workDate: String
-    ): Boolean {
-        val t = token.value ?: return false
+    ): UploadResult {
+        val t = token.value
+        if (t.isNullOrBlank()) {
+            return UploadResult(false, "로그인이 필요합니다")
+        }
+        if (!file.exists() || file.length() == 0L) {
+            return UploadResult(false, "업로드 파일이 비어 있습니다")
+        }
         return try {
             val body = file.asRequestBody("image/jpeg".toMediaType())
             val part = MultipartBody.Part.createFormData("image", file.name, body)
             fun text(v: String) = v.toRequestBody("text/plain".toMediaType())
-            ApiClient.api.createRecord(
+            val response = ApiClient.api.createRecord(
                 auth = "Bearer $t",
                 workName = text(workName),
                 workType = text(workType),
@@ -214,9 +250,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 workDate = text(workDate),
                 image = part
             )
-            true
-        } catch (_: Exception) {
-            false
+            // JSON 파싱 실패와 무관하게 HTTP 2xx면 업로드 성공으로 처리
+            if (response.isSuccessful) {
+                response.body()?.close()
+                UploadResult(true)
+            } else {
+                val err = runCatching { response.errorBody()?.string() }.getOrNull()
+                UploadResult(
+                    false,
+                    "서버 ${response.code()}${if (!err.isNullOrBlank()) ": $err" else ""}"
+                )
+            }
+        } catch (e: HttpException) {
+            val body = runCatching { e.response()?.errorBody()?.string() }.getOrNull()
+            UploadResult(
+                false,
+                "서버 ${e.code()}${if (!body.isNullOrBlank()) ": $body" else ""}"
+            )
+        } catch (e: Exception) {
+            UploadResult(
+                false,
+                e.message ?: e.javaClass.simpleName
+            )
         }
     }
 
@@ -230,7 +285,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     queue.remove(item.id)
                     return@forEach
                 }
-                val ok = tryUpload(
+                val result = tryUpload(
                     file,
                     item.workName,
                     item.workType,
@@ -238,7 +293,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     item.content,
                     item.workDate
                 )
-                if (ok) queue.remove(item.id)
+                if (result.ok) {
+                    queue.remove(item.id)
+                    runCatching { file.delete() }
+                } else {
+                    message.value = "대기 재전송 실패: ${result.error}"
+                }
             }
             refreshPendingCount()
             loadRecords()

@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -63,6 +64,7 @@ fun RecordsScreen(
 ) {
     val records by vm.records.collectAsState()
     val pending by vm.pendingCount.collectAsState()
+    val message by vm.message.collectAsState()
     val userName by vm.userName.collectAsState()
     val now = remember { LocalDate.now() }
     var year by remember { mutableIntStateOf(now.year) }
@@ -146,6 +148,36 @@ fun RecordsScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(12.dp))
+            if (pending > 0 || !message.isNullOrBlank()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFFFF4E5))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = if (pending > 0) "업로드 대기 ${pending}건" else "알림",
+                        color = Color(0xFF8A4B00),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    if (!message.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = message!!,
+                            color = Color(0xFF5C3A00),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "새로고침을 누르면 대기 건을 다시 전송합니다.",
+                        color = Color(0xFF7A5A2A),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
             Surface(
                 color = Brand.Panel,
                 shape = SoftShape,

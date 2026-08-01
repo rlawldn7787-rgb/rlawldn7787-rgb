@@ -15,9 +15,11 @@ object ApiClient {
         .build()
 
     private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(45, TimeUnit.SECONDS)
+        .readTimeout(180, TimeUnit.SECONDS)
+        .writeTimeout(180, TimeUnit.SECONDS)
+        .callTimeout(210, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .addInterceptor(
             HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BASIC
@@ -25,8 +27,10 @@ object ApiClient {
         )
         .build()
 
+    val baseUrl: String = BuildConfig.API_BASE_URL.trimEnd('/') + "/"
+
     val api: ApiService = Retrofit.Builder()
-        .baseUrl(BuildConfig.API_BASE_URL.trimEnd('/') + "/")
+        .baseUrl(baseUrl)
         .client(client)
         .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()
