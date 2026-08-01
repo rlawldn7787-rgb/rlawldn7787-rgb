@@ -113,11 +113,12 @@ import java.time.LocalDate
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
-private val UiBlue = Color(0xFF2F78E8)
-private val UiBg = Color(0xFFE8E8E8)
-private val PreviewBg = Color(0xFFD8D8D8)
-private val TableBorder = Color(0xFF222222)
-private val ButtonBg = Color(0xFFEEEEEE)
+private val UiBlue = Color(0xFF19B7E6)
+private val UiNavy = Color(0xFF0B1F3A)
+private val UiBg = Color(0xFFEEF3F8)
+private val PreviewBg = Color(0xFFE2EAF2)
+private val TableBorder = Color(0xFFD7E0EA)
+private val ButtonBg = Color(0xFFFFFFFF)
 
 private enum class EditField {
     WorkName, WorkType, Location, Content, WorkDate
@@ -241,21 +242,22 @@ fun CaptureScreen(
                 onEdit = { editingField = it },
                 boxMod = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
+                    .padding(horizontal = 14.dp)
+                    .clip(RoundedCornerShape(12.dp))
             )
             Text(
-                text = "각 칸을 누르면 글자를 수정할 수 있습니다",
+                text = "칸을 누르면 내용을 수정할 수 있어요",
                 fontSize = 12.sp,
-                color = Color(0xFF666666),
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
+                color = Color(0xFF5D6D82),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp),
+                    .padding(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ToolButton(Icons.Default.CameraAlt, Modifier.weight(1f)) { openCamera() }
@@ -290,9 +292,9 @@ fun CaptureScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 12.dp)
-                    .padding(bottom = 12.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .padding(horizontal = 14.dp)
+                    .padding(bottom = 14.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(PreviewBg),
                 contentAlignment = Alignment.Center
             ) {
@@ -406,7 +408,7 @@ private fun BoardTable(
     Column(
         modifier = boxMod
             .background(Color.White)
-            .border(1.dp, TableBorder)
+            .border(1.dp, TableBorder, RoundedCornerShape(12.dp))
     ) {
         TableRow("공사명", workName.ifBlank { " " }) { onEdit(EditField.WorkName) }
         TableRow("공종", workType.ifBlank { " " }) { onEdit(EditField.WorkType) }
@@ -429,11 +431,12 @@ private fun TableRow(label: String, value: String, onClick: () -> Unit) {
             modifier = Modifier
                 .width(72.dp)
                 .fillMaxHeight()
+                .background(Color(0xFFF2F6FA))
                 .border(1.dp, TableBorder)
                 .padding(horizontal = 6.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF222222))
+            Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = UiNavy)
         }
         Box(
             modifier = Modifier
@@ -446,7 +449,7 @@ private fun TableRow(label: String, value: String, onClick: () -> Unit) {
             Text(
                 text = value,
                 fontSize = 13.sp,
-                color = Color(0xFF111111),
+                color = UiNavy,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -464,16 +467,17 @@ private fun ToolButton(
     Box(
         modifier = boxMod
             .height(52.dp)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(ButtonBg)
+            .border(1.dp, TableBorder, RoundedCornerShape(12.dp))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (enabled) UiBlue else Color(0xFF99AACC),
-            modifier = Modifier.size(28.dp)
+            tint = if (enabled) UiNavy else Color(0xFF99AACC),
+            modifier = Modifier.size(26.dp)
         )
     }
 }

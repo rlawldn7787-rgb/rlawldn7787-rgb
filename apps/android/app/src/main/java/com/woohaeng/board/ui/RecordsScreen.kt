@@ -1,20 +1,24 @@
 package com.woohaeng.board.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,10 +29,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,11 +43,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import com.woohaeng.board.util.resolveMediaUrl
 import coil.compose.AsyncImage
+import com.woohaeng.board.util.resolveMediaUrl
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -85,11 +93,17 @@ fun RecordsScreen(
     }
 
     Scaffold(
+        containerColor = Brand.Bg,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Brand.Panel,
+                    titleContentColor = Brand.Navy,
+                    actionIconContentColor = Brand.Navy
+                ),
                 title = {
                     Column {
-                        Text("우행통신 보드판")
+                        Text("우행통신 보드판", style = MaterialTheme.typography.titleLarge)
                         Text(
                             "${userName ?: ""} · 대기 ${pending}건",
                             style = MaterialTheme.typography.bodySmall
@@ -109,13 +123,18 @@ fun RecordsScreen(
                         Icon(Icons.Default.Download, contentDescription = "엑셀")
                     }
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.Default.Logout, contentDescription = "로그아웃")
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "로그아웃")
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onCapture) {
+            FloatingActionButton(
+                onClick = onCapture,
+                containerColor = Brand.Cyan,
+                contentColor = Brand.NavyDeep,
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "촬영")
             }
         }
@@ -126,92 +145,95 @@ fun RecordsScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExposedDropdownMenuBox(
-                    expanded = yearExpanded,
-                    onExpandedChange = { yearExpanded = it },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = "${year}년",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("연도") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                color = Brand.Panel,
+                shape = SoftShape,
+                tonalElevation = 0.dp,
+                shadowElevation = 2.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        "${year}년 ${month}월 현장 기록",
+                        style = MaterialTheme.typography.titleMedium
                     )
-                    ExposedDropdownMenu(
-                        expanded = yearExpanded,
-                        onDismissRequest = { yearExpanded = false }
-                    ) {
-                        yearOptions.forEach { y ->
-                            DropdownMenuItem(
-                                text = { Text("${y}년") },
-                                onClick = {
-                                    year = y
-                                    yearExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                ExposedDropdownMenuBox(
-                    expanded = monthExpanded,
-                    onExpandedChange = { monthExpanded = it },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = "${month}월",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("월") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
+                    Text(
+                        "연·월을 고르고 공사명으로 좁혀보세요",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
                     )
-                    ExposedDropdownMenu(
-                        expanded = monthExpanded,
-                        onDismissRequest = { monthExpanded = false }
-                    ) {
-                        monthOptions.forEach { m ->
-                            DropdownMenuItem(
-                                text = { Text("${m}월") },
-                                onClick = {
-                                    month = m
-                                    monthExpanded = false
-                                }
-                            )
-                        }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SoftSelect(
+                            label = "연도",
+                            value = "${year}년",
+                            expanded = yearExpanded,
+                            onExpandedChange = { yearExpanded = it },
+                            options = yearOptions.map { it to "${it}년" },
+                            onSelect = {
+                                year = it
+                                yearExpanded = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        SoftSelect(
+                            label = "월",
+                            value = "${month}월",
+                            expanded = monthExpanded,
+                            onExpandedChange = { monthExpanded = it },
+                            options = monthOptions.map { it to "${it}월" },
+                            onSelect = {
+                                month = it
+                                monthExpanded = false
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = workName,
+                        onValueChange = { workName = it },
+                        label = { Text("공사명 검색") },
+                        singleLine = true,
+                        shape = SoftShapeSm,
+                        colors = fieldColors(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
-            OutlinedTextField(
-                value = workName,
-                onValueChange = { workName = it },
-                label = { Text("공사명 검색") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-            )
+
             Text(
-                "${year}년 ${month}월 · 공사명 검색 후 새로고침. 엑셀도 같은 조건입니다.",
+                "${records.size}건 · 검색 후 새로고침",
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(top = 14.dp, bottom = 10.dp)
             )
+
+            if (records.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(SoftShape)
+                        .background(Brand.Panel)
+                        .padding(vertical = 40.dp, horizontal = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "${year}년 ${month}월 기록이 없습니다",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Brand.Muted
+                    )
+                }
+            }
+
             LazyColumn(
                 contentPadding = PaddingValues(bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(records, key = { it.id }) { item ->
                     Surface(
-                        tonalElevation = 2.dp,
+                        color = Brand.Panel,
+                        shape = SoftShape,
+                        shadowElevation = 2.dp,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onOpen(item.id) }
@@ -223,21 +245,34 @@ fun RecordsScreen(
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(160.dp)
+                                    .height(168.dp)
+                                    .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
                             )
-                            Text(
-                                text = item.workName,
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(start = 12.dp, top = 12.dp, end = 12.dp)
-                            )
-                            Text(
-                                text = "${item.workDate.take(10)} · ${item.authorName}",
-                                modifier = Modifier.padding(horizontal = 12.dp)
-                            )
-                            Text(
-                                text = "${item.workType} / ${item.location}",
-                                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-                            )
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(item.workName, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    "${item.workDate.take(10)} · ${item.authorName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                                if (item.workType.isNotBlank()) {
+                                    Text(
+                                        item.workType,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Brand.Navy,
+                                        modifier = Modifier
+                                            .padding(top = 8.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Brand.CyanSoft)
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Text(
+                                    item.location.ifBlank { "위치 미입력" },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(top = 6.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -245,3 +280,55 @@ fun RecordsScreen(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SoftSelect(
+    label: String,
+    value: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: List<Pair<Int, String>>,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            shape = SoftShapeSm,
+            colors = fieldColors(),
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            options.forEach { (key, text) ->
+                DropdownMenuItem(
+                    text = { Text(text) },
+                    onClick = { onSelect(key) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun fieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = Brand.Cyan,
+    unfocusedBorderColor = Brand.Line,
+    focusedLabelColor = Brand.Navy,
+    cursorColor = Brand.Cyan,
+    focusedContainerColor = Brand.BgTop,
+    unfocusedContainerColor = Brand.BgTop
+)

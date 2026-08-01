@@ -4,36 +4,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.woohaeng.board.ui.AppViewModel
 import com.woohaeng.board.ui.CaptureScreen
 import com.woohaeng.board.ui.LoginScreen
 import com.woohaeng.board.ui.RecordDetailScreen
 import com.woohaeng.board.ui.RecordsScreen
-import com.woohaeng.board.ui.AppViewModel
+import com.woohaeng.board.ui.WoohaengTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme(
-                colorScheme = lightColorScheme(
-                    primary = Color(0xFF0F6B4C),
-                    secondary = Color(0xFF1A2420),
-                    background = Color(0xFFF3F5F2),
-                    surface = Color.White
-                )
-            ) {
+            WoohaengTheme {
                 val vm: AppViewModel = viewModel()
                 val token by vm.token.collectAsState()
                 val nav = rememberNavController()
