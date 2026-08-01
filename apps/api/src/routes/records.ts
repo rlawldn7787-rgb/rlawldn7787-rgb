@@ -105,7 +105,11 @@ recordsRouter.get("/export.xlsx", requireAuth, async (req, res) => {
     params
   );
 
-  const buffer = await buildRecordsExcel(result.rows);
+  const q = req.query as { from?: string; to?: string };
+  const buffer = await buildRecordsExcel(result.rows, {
+    from: q.from,
+    to: q.to,
+  });
   res.setHeader(
     "Content-Type",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

@@ -9,6 +9,8 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.woohaeng.board.data.ApiClient
+import com.woohaeng.board.data.BoardLabelStore
+import com.woohaeng.board.data.BoardLabels
 import com.woohaeng.board.data.LoginRequest
 import com.woohaeng.board.data.PendingUpload
 import com.woohaeng.board.data.RecordDto
@@ -36,17 +38,24 @@ import java.util.UUID
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val session = SessionStore(app)
     private val queue = UploadQueue(app)
+    private val boardLabelStore = BoardLabelStore(app)
 
     val token: StateFlow<String?> =
         session.token.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val userName: StateFlow<String?> =
         session.userName.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val boardLabels: StateFlow<BoardLabels> =
+        boardLabelStore.labels.stateIn(viewModelScope, SharingStarted.Eagerly, BoardLabels())
 
     val records = MutableStateFlow<List<RecordDto>>(emptyList())
     val selected = MutableStateFlow<RecordDto?>(null)
     val message = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow(false)
     val pendingCount = MutableStateFlow(0)
+
+    fun saveBoardLabels(labels: BoardLabels) {
+        viewModelScope.launch { boardLabelStore.save(labels) }
+    }
 
     init {
         refreshPendingCount()
@@ -134,7 +143,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val composed = BoardCompositor.compose(
             sourceBitmap,
             BoardFields(workName, workType, location, content, workDate),
-            layout
+            layout,
+            boardLabels.value
         )
 
         if (saveToGallery) {

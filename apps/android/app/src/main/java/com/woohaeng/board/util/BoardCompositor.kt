@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import com.woohaeng.board.data.BoardLabels
 
 data class BoardFields(
     val workName: String,
@@ -28,7 +29,8 @@ object BoardCompositor {
     fun compose(
         photo: Bitmap,
         fields: BoardFields,
-        layout: BoardLayout = BoardLayout()
+        layout: BoardLayout = BoardLayout(),
+        labels: BoardLabels = BoardLabels()
     ): Bitmap {
         val result = photo.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(result)
@@ -39,11 +41,11 @@ object BoardCompositor {
         val padding = boardWidth * 0.06f
         val lineHeight = boardWidth * 0.085f
         val rows = listOf(
-            "공사명" to fields.workName,
-            "공종" to fields.workType,
-            "위치" to fields.location,
-            "내용" to fields.content,
-            "일자" to fields.workDate
+            labels.workName to fields.workName,
+            labels.workType to fields.workType,
+            labels.location to fields.location,
+            labels.content to fields.content,
+            labels.workDate to fields.workDate
         )
         val boardHeight = padding * 2 + lineHeight * rows.size + padding
 

@@ -106,6 +106,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.woohaeng.board.data.BoardLabels
 import com.woohaeng.board.util.BoardCompositor
 import com.woohaeng.board.util.BoardFields
 import com.woohaeng.board.util.BoardLayout
@@ -145,8 +146,10 @@ fun CaptureScreen(
     var widthRatio by remember { mutableFloatStateOf(0.42f) }
     var showFormat by remember { mutableStateOf(false) }
     var editingField by remember { mutableStateOf<EditField?>(null) }
+    var editingLabel by remember { mutableStateOf<EditField?>(null) }
     val busy by vm.busy.collectAsState()
     val message by vm.message.collectAsState()
+    val boardLabels by vm.boardLabels.collectAsState()
 
     val layout = BoardLayout(offsetX = offsetX, offsetY = offsetY, widthRatio = widthRatio)
     val fields = BoardFields(
@@ -156,8 +159,8 @@ fun CaptureScreen(
         content = content,
         workDate = workDate
     )
-    val preview = remember(source, fields, layout) {
-        source?.let { BoardCompositor.compose(it, fields, layout) }
+    val preview = remember(source, fields, layout, boardLabels) {
+        source?.let { BoardCompositor.compose(it, fields, layout, boardLabels) }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -211,6 +214,7 @@ fun CaptureScreen(
     if (showLiveCamera) {
         LiveCameraWithBoard(
             fields = fields,
+            labels = boardLabels,
             offsetX = offsetX,
             offsetY = offsetY,
             widthRatio = widthRatio,
@@ -234,19 +238,21 @@ fun CaptureScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             BoardTable(
+                labels = boardLabels,
                 workName = workName,
                 workType = workType,
                 location = location,
                 content = content,
                 workDate = displayDate(workDate),
-                onEdit = { editingField = it },
+                onEditValue = { editingField = it },
+                onEditLabel = { editingLabel = it },
                 boxMod = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp)
                     .clip(RoundedCornerShape(12.dp))
             )
             Text(
-                text = "칸을 누르면 내용을 수정할 수 있어요",
+                text = "왼쪽 제목칸·오른쪽 내용칸을 누르면 각각 수정할 수 있어요",
                 fontSize = 12.sp,
                 color = Color(0xFF5D6D82),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
@@ -346,11 +352,11 @@ fun CaptureScreen(
 
     editingField?.let { field ->
         val title = when (field) {
-            EditField.WorkName -> "공사명"
-            EditField.WorkType -> "공종"
-            EditField.Location -> "위치"
-            EditField.Content -> "내용"
-            EditField.WorkDate -> "일자"
+            EditField.WorkName -> boardLabels.workName
+            EditField.WorkType -> boardLabels.workType
+            EditField.Location -> boardLabels.location
+            EditField.Content -> boardLabels.content
+            EditField.WorkDate -> boardLabels.workDate
         }
         val value = when (field) {
             EditField.WorkName -> workName
@@ -393,16 +399,60 @@ fun CaptureScreen(
             }
         )
     }
+
+    editingLabel?.let { field ->
+        val current = when (field) {
+            EditField.WorkName -> boardLabels.workName
+            EditField.WorkType -> boardLabels.workType
+            EditField.Location -> boardLabels.location
+            EditField.Content -> boardLabels.content
+            EditField.WorkDate -> boardLabels.workDate
+        }
+        var draft by remember(field) { mutableStateOf(current) }
+        AlertDialog(
+            onDismissRequest = { editingLabel = null },
+            title = { Text("제목칸 수정") },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("예: 공사명") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val next = when (field) {
+                            EditField.WorkName -> boardLabels.copy(workName = draft.trim().ifBlank { "공사명" })
+                            EditField.WorkType -> boardLabels.copy(workType = draft.trim().ifBlank { "공종" })
+                            EditField.Location -> boardLabels.copy(location = draft.trim().ifBlank { "위치" })
+                            EditField.Content -> boardLabels.copy(content = draft.trim().ifBlank { "내용" })
+                            EditField.WorkDate -> boardLabels.copy(workDate = draft.trim().ifBlank { "일자" })
+                        }
+                        vm.saveBoardLabels(next)
+                        editingLabel = null
+                    }
+                ) { Text("확인") }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingLabel = null }) { Text("취소") }
+            }
+        )
+    }
 }
 
 @Composable
 private fun BoardTable(
+    labels: BoardLabels,
     workName: String,
     workType: String,
     location: String,
     content: String,
     workDate: String,
-    onEdit: (EditField) -> Unit,
+    onEditValue: (EditField) -> Unit,
+    onEditLabel: (EditField) -> Unit,
     boxMod: Modifier
 ) {
     Column(
@@ -410,21 +460,35 @@ private fun BoardTable(
             .background(Color.White)
             .border(1.dp, TableBorder, RoundedCornerShape(12.dp))
     ) {
-        TableRow("공사명", workName.ifBlank { " " }) { onEdit(EditField.WorkName) }
-        TableRow("공종", workType.ifBlank { " " }) { onEdit(EditField.WorkType) }
-        TableRow("위치", location.ifBlank { " " }) { onEdit(EditField.Location) }
-        TableRow("내용", content.ifBlank { " " }) { onEdit(EditField.Content) }
-        TableRow("일자", workDate.ifBlank { " " }) { onEdit(EditField.WorkDate) }
+        TableRow(labels.workName, workName.ifBlank { " " },
+            onLabelClick = { onEditLabel(EditField.WorkName) },
+            onValueClick = { onEditValue(EditField.WorkName) })
+        TableRow(labels.workType, workType.ifBlank { " " },
+            onLabelClick = { onEditLabel(EditField.WorkType) },
+            onValueClick = { onEditValue(EditField.WorkType) })
+        TableRow(labels.location, location.ifBlank { " " },
+            onLabelClick = { onEditLabel(EditField.Location) },
+            onValueClick = { onEditValue(EditField.Location) })
+        TableRow(labels.content, content.ifBlank { " " },
+            onLabelClick = { onEditLabel(EditField.Content) },
+            onValueClick = { onEditValue(EditField.Content) })
+        TableRow(labels.workDate, workDate.ifBlank { " " },
+            onLabelClick = { onEditLabel(EditField.WorkDate) },
+            onValueClick = { onEditValue(EditField.WorkDate) })
     }
 }
 
 @Composable
-private fun TableRow(label: String, value: String, onClick: () -> Unit) {
+private fun TableRow(
+    label: String,
+    value: String,
+    onLabelClick: () -> Unit,
+    onValueClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(36.dp)
-            .clickable(onClick = onClick),
+            .height(36.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -433,6 +497,7 @@ private fun TableRow(label: String, value: String, onClick: () -> Unit) {
                 .fillMaxHeight()
                 .background(Color(0xFFF2F6FA))
                 .border(1.dp, TableBorder)
+                .clickable(onClick = onLabelClick)
                 .padding(horizontal = 6.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -443,6 +508,7 @@ private fun TableRow(label: String, value: String, onClick: () -> Unit) {
                 .weight(1f)
                 .fillMaxHeight()
                 .border(1.dp, TableBorder)
+                .clickable(onClick = onValueClick)
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -555,6 +621,7 @@ private enum class FlashOption {
 @Composable
 private fun LiveCameraWithBoard(
     fields: BoardFields,
+    labels: BoardLabels,
     offsetX: Float,
     offsetY: Float,
     widthRatio: Float,
@@ -754,6 +821,7 @@ private fun LiveCameraWithBoard(
 
                 LiveBoardOverlay(
                     fields = fields,
+                    labels = labels,
                     widthFraction = safeRatio,
                     modifier = Modifier
                         .graphicsLayer {
@@ -1029,15 +1097,16 @@ private fun SideControlButton(
 @Composable
 private fun LiveBoardOverlay(
     fields: BoardFields,
+    labels: BoardLabels,
     widthFraction: Float,
     modifier: Modifier = Modifier
 ) {
     val rows = listOf(
-        "공사명" to fields.workName,
-        "공종" to fields.workType,
-        "위치" to fields.location,
-        "내용" to fields.content,
-        "일자" to fields.workDate.replace('-', '.')
+        labels.workName to fields.workName,
+        labels.workType to fields.workType,
+        labels.location to fields.location,
+        labels.content to fields.content,
+        labels.workDate to fields.workDate.replace('-', '.')
     )
     Column(
         modifier = modifier
