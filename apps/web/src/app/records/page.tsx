@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { downloadExcel, fetchRecords, RecordItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -26,7 +26,7 @@ const YEAR_OPTIONS = (() => {
 })();
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
-const POLL_MS = 5000;
+const POLL_MS = 3000;
 
 export default function RecordsPage() {
   const { token } = useAuth();
@@ -34,66 +34,75 @@ export default function RecordsPage() {
   const [year, setYear] = useState(initial.year);
   const [month, setMonth] = useState(initial.month);
   const [workName, setWorkName] = useState("");
+  const [appliedWorkName, setAppliedWorkName] = useState("");
   const [records, setRecords] = useState<RecordItem[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   const params = useMemo(() => {
     const { from, to } = monthRange(year, month);
     const p: Record<string, string> = { from, to };
-    if (workName.trim()) p.workName = workName.trim();
+    if (appliedWorkName.trim()) p.workName = appliedWorkName.trim();
     return p;
-  }, [year, month, workName]);
+  }, [year, month, appliedWorkName]);
 
-  const load = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      if (!token) return;
-      const silent = Boolean(opts?.silent);
+  const tokenRef = useRef(token);
+  const paramsRef = useRef(params);
+  tokenRef.current = token;
+  paramsRef.current = params;
+
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+
+    async function refresh(silent: boolean) {
+      const t = tokenRef.current;
+      if (!t || cancelled) return;
       if (!silent) {
         setLoading(true);
         setError("");
       }
       try {
-        const data = await fetchRecords(token, params);
+        const data = await fetchRecords(t, paramsRef.current);
+        if (cancelled) return;
         setRecords(data.records);
+        setLastSyncedAt(new Date());
       } catch (err) {
-        if (!silent) {
+        if (!silent && !cancelled) {
           setError(err instanceof Error ? err.message : "조회 실패");
         }
       } finally {
-        if (!silent) setLoading(false);
+        if (!silent && !cancelled) setLoading(false);
       }
-    },
-    [token, params]
-  );
+    }
 
-  // 연·월 변경 또는 최초 진입 시 조회 (공사명은 '조회' 버튼으로 적용)
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, year, month]);
+    void refresh(false);
 
-  // 새 사진 업로드 반영: 5초마다 조용히 새로고침 + 탭 다시 볼 때 갱신
-  useEffect(() => {
-    if (!token) return;
-
-    const tick = () => {
+    const id = window.setInterval(() => {
       if (document.visibilityState === "visible") {
-        void load({ silent: true });
+        void refresh(true);
       }
-    };
-    const id = window.setInterval(tick, POLL_MS);
+    }, POLL_MS);
+
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        void load({ silent: true });
+        void refresh(true);
       }
     };
     document.addEventListener("visibilitychange", onVisible);
+
     return () => {
+      cancelled = true;
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [token, load]);
+  }, [token, year, month, appliedWorkName]);
+
+  function onSearch() {
+    setAppliedWorkName(workName.trim());
+  }
 
   async function onExport() {
     if (!token) return;
@@ -117,12 +126,24 @@ export default function RecordsPage() {
           <div>
             <h2>현장 기록</h2>
             <p>
-              {year}년 {month}월 기록을 조회하고 엑셀로 내려받으세요.
+              {year}년 {month}월 기록 · 새 사진은 자동으로 반영됩니다.
             </p>
           </div>
-          {!loading ? (
-            <span className="muted">{records.length}건</span>
-          ) : null}
+          <div style={{ textAlign: "right" }}>
+            {!loading ? (
+              <span className="muted">{records.length}건</span>
+            ) : null}
+            {lastSyncedAt ? (
+              <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                자동갱신{" "}
+                {lastSyncedAt.toLocaleTimeString("ko-KR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="filters">
@@ -157,11 +178,14 @@ export default function RecordsPage() {
             <input
               value={workName}
               onChange={(e) => setWorkName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onSearch();
+              }}
               placeholder="검색어 입력"
             />
           </label>
           <div className="actions">
-            <button className="btn primary" type="button" onClick={load}>
+            <button className="btn primary" type="button" onClick={onSearch}>
               조회
             </button>
             <button className="btn" type="button" onClick={onExport}>

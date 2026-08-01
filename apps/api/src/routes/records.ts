@@ -90,6 +90,8 @@ recordsRouter.get("/", requireAuth, async (req, res) => {
      LIMIT 500`,
     params
   );
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
   return res.json({ records: result.rows.map(mapRecord) });
 });
 

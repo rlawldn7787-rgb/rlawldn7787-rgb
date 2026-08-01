@@ -89,9 +89,19 @@ export async function fetchRecords(
   token: string,
   params: Record<string, string>
 ) {
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(apiPath(`/records${qs ? `?${qs}` : ""}`), {
-    headers: authHeaders(token),
+  const qs = new URLSearchParams({
+    ...params,
+    // 브라우저/중간 캐시가 옛 목록을 주지 않도록 매번 갱신
+    _ts: String(Date.now()),
+  }).toString();
+  const res = await fetch(apiPath(`/records?${qs}`), {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      ...authHeaders(token),
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
   });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json() as Promise<{ records: RecordItem[] }>;
