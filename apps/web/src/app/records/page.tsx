@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { downloadExcel, fetchRecords, RecordItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -26,6 +26,7 @@ const YEAR_OPTIONS = (() => {
 })();
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+const POLL_MS = 5000;
 
 export default function RecordsPage() {
   const { token } = useAuth();
@@ -44,24 +45,55 @@ export default function RecordsPage() {
     return p;
   }, [year, month, workName]);
 
-  async function load() {
-    if (!token) return;
-    setLoading(true);
-    setError("");
-    try {
-      const data = await fetchRecords(token, params);
-      setRecords(data.records);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "조회 실패");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!token) return;
+      const silent = Boolean(opts?.silent);
+      if (!silent) {
+        setLoading(true);
+        setError("");
+      }
+      try {
+        const data = await fetchRecords(token, params);
+        setRecords(data.records);
+      } catch (err) {
+        if (!silent) {
+          setError(err instanceof Error ? err.message : "조회 실패");
+        }
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [token, params]
+  );
 
+  // 연·월 변경 또는 최초 진입 시 조회 (공사명은 '조회' 버튼으로 적용)
   useEffect(() => {
-    load();
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, year, month]);
+
+  // 새 사진 업로드 반영: 5초마다 조용히 새로고침 + 탭 다시 볼 때 갱신
+  useEffect(() => {
+    if (!token) return;
+
+    const tick = () => {
+      if (document.visibilityState === "visible") {
+        void load({ silent: true });
+      }
+    };
+    const id = window.setInterval(tick, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void load({ silent: true });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [token, load]);
 
   async function onExport() {
     if (!token) return;
