@@ -25,6 +25,12 @@ function formatDateTime(value: string | Date) {
   return d.toISOString().replace("T", " ").slice(0, 19);
 }
 
+const centerAlign: Partial<ExcelJS.Alignment> = {
+  horizontal: "center",
+  vertical: "middle",
+  wrapText: true,
+};
+
 export async function buildRecordsExcel(rows: ExportRow[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "우행통신 보드판";
@@ -36,15 +42,16 @@ export async function buildRecordsExcel(rows: ExportRow[]): Promise<Buffer> {
     { header: "공종", key: "work_type", width: 16 },
     { header: "위치", key: "location", width: 20 },
     { header: "내용", key: "content", width: 36 },
-    { header: "작성자", key: "author_name", width: 12 },
     { header: "업로드시각", key: "created_at", width: 20 },
     { header: "사진", key: "photo", width: 28 },
   ];
 
-  sheet.getRow(1).font = { bold: true };
-  sheet.getRow(1).height = 22;
+  const headerRow = sheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.height = 22;
+  headerRow.alignment = centerAlign;
 
-  const photoCol = 8; // 1-based column for images
+  const photoCol = 7; // 1-based column for images
   const thumbWidth = 160;
   const thumbHeight = 120;
 
@@ -56,11 +63,11 @@ export async function buildRecordsExcel(rows: ExportRow[]): Promise<Buffer> {
       work_type: row.work_type,
       location: row.location,
       content: row.content,
-      author_name: row.author_name,
       created_at: formatDateTime(row.created_at),
       photo: "",
     });
     excelRow.height = 95;
+    excelRow.alignment = centerAlign;
 
     try {
       const raw = await getObjectBuffer(row.photo_key);
@@ -91,6 +98,13 @@ export async function buildRecordsExcel(rows: ExportRow[]): Promise<Buffer> {
       excelRow.getCell(photoCol).value = "(사진 없음)";
     }
   }
+
+  // Ensure every used cell is centered (including photo placeholder text)
+  sheet.eachRow((row) => {
+    row.eachCell((cell) => {
+      cell.alignment = { ...centerAlign };
+    });
+  });
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(arrayBuffer);
