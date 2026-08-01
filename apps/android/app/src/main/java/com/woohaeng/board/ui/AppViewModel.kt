@@ -20,11 +20,14 @@ import com.woohaeng.board.util.BoardCompositor
 import com.woohaeng.board.util.BoardFields
 import com.woohaeng.board.util.BoardLayout
 import com.woohaeng.board.util.GallerySaver
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -41,6 +44,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val session = SessionStore(app)
     private val queue = UploadQueue(app)
     private val boardLabelStore = BoardLabelStore(app)
+    private val uploadMutex = Mutex()
 
     val token: StateFlow<String?> =
         session.token.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -54,6 +58,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val message = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow(false)
     val pendingCount = MutableStateFlow(0)
+    val needsRelogin = MutableStateFlow(false)
 
     fun saveBoardLabels(labels: BoardLabels) {
         viewModelScope.launch { boardLabelStore.save(labels) }
@@ -77,6 +82,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val res = ApiClient.api.login(LoginRequest(username, password))
                 session.save(res.token, res.user)
+                needsRelogin.value = false
                 message.value = null
                 onDone(true)
             } catch (e: Exception) {
@@ -91,6 +97,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun logout() {
         viewModelScope.launch { session.clear() }
         records.value = emptyList()
+        needsRelogin.value = false
+    }
+
+    private suspend fun handleUnauthorized(detail: String): UploadResult {
+        session.clear()
+        needsRelogin.value = true
+        return UploadResult(
+            false,
+            "로그인이 만료되었습니다. 다시 로그인해 주세요. ($detail)"
+        )
     }
 
     fun loadRecords(
@@ -161,25 +177,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             busy.value = true
-            val result = tryUpload(file, workName, workType, location, content, workDate)
+            val result = uploadMutex.withLock {
+                tryUpload(file, workName, workType, location, content, workDate)
+            }
             if (!result.ok) {
-                queue.enqueue(
-                    PendingUpload(
-                        id = UUID.randomUUID().toString(),
-                        imagePath = file.absolutePath,
-                        workName = workName,
-                        workType = workType,
-                        location = location,
-                        content = content,
-                        workDate = workDate
-                    )
-                )
-                refreshPendingCount()
-                val reason = result.error ?: "알 수 없는 오류"
-                message.value = if (saveToGallery) {
-                    "갤러리 저장됨 · 업로드 실패로 대기열에 저장: $reason"
+                // 로그인 만료면 대기열에 넣지 않고 재로그인 유도
+                if (needsRelogin.value) {
+                    runCatching { file.delete() }
+                    message.value = result.error
                 } else {
-                    "업로드 실패로 대기열에 저장: $reason"
+                    queue.enqueue(
+                        PendingUpload(
+                            id = UUID.randomUUID().toString(),
+                            imagePath = file.absolutePath,
+                            workName = workName,
+                            workType = workType,
+                            location = location,
+                            content = content,
+                            workDate = workDate
+                        )
+                    )
+                    refreshPendingCount()
+                    val reason = result.error ?: "알 수 없는 오류"
+                    message.value = if (saveToGallery) {
+                        "갤러리 저장됨 · 업로드 실패로 대기열에 저장: $reason"
+                    } else {
+                        "업로드 실패로 대기열에 저장: $reason"
+                    }
                 }
             } else {
                 // 성공한 임시 파일은 정리
@@ -222,7 +246,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return file
     }
 
+    private fun isRetryableNetworkError(message: String?): Boolean {
+        val m = message.orEmpty().lowercase()
+        return m.contains("stream was reset") ||
+            m.contains("connection reset") ||
+            m.contains("timeout") ||
+            m.contains("unexpected end of stream") ||
+            m.contains("software caused connection abort")
+    }
+
     private suspend fun tryUpload(
+        file: File,
+        workName: String,
+        workType: String,
+        location: String,
+        content: String,
+        workDate: String
+    ): UploadResult {
+        var last = UploadResult(false, "업로드 실패")
+        repeat(3) { attempt ->
+            last = tryUploadOnce(file, workName, workType, location, content, workDate)
+            if (last.ok) return last
+            if (needsRelogin.value) return last
+            if (last.error?.contains("서버 401") == true) return last
+            if (!isRetryableNetworkError(last.error)) return last
+            delay(800L * (attempt + 1))
+        }
+        return last
+    }
+
+    private suspend fun tryUploadOnce(
         file: File,
         workName: String,
         workType: String,
@@ -232,7 +285,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     ): UploadResult {
         val t = token.value
         if (t.isNullOrBlank()) {
-            return UploadResult(false, "로그인이 필요합니다")
+            return handleUnauthorized("토큰 없음")
         }
         if (!file.exists() || file.length() == 0L) {
             return UploadResult(false, "업로드 파일이 비어 있습니다")
@@ -256,17 +309,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 UploadResult(true)
             } else {
                 val err = runCatching { response.errorBody()?.string() }.getOrNull()
-                UploadResult(
-                    false,
-                    "서버 ${response.code()}${if (!err.isNullOrBlank()) ": $err" else ""}"
-                )
+                if (response.code() == 401) {
+                    handleUnauthorized(err ?: "401")
+                } else {
+                    UploadResult(
+                        false,
+                        "서버 ${response.code()}${if (!err.isNullOrBlank()) ": $err" else ""}"
+                    )
+                }
             }
         } catch (e: HttpException) {
             val body = runCatching { e.response()?.errorBody()?.string() }.getOrNull()
-            UploadResult(
-                false,
-                "서버 ${e.code()}${if (!body.isNullOrBlank()) ": $body" else ""}"
-            )
+            if (e.code() == 401) {
+                handleUnauthorized(body ?: "401")
+            } else {
+                UploadResult(
+                    false,
+                    "서버 ${e.code()}${if (!body.isNullOrBlank()) ": $body" else ""}"
+                )
+            }
         } catch (e: Exception) {
             UploadResult(
                 false,
@@ -279,29 +340,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val t = token.value ?: return@launch
             if (t.isBlank()) return@launch
-            queue.list().forEach { item ->
-                val file = File(item.imagePath)
-                if (!file.exists()) {
-                    queue.remove(item.id)
-                    return@forEach
-                }
-                val result = tryUpload(
-                    file,
-                    item.workName,
-                    item.workType,
-                    item.location,
-                    item.content,
-                    item.workDate
-                )
-                if (result.ok) {
-                    queue.remove(item.id)
-                    runCatching { file.delete() }
-                } else {
-                    message.value = "대기 재전송 실패: ${result.error}"
+            uploadMutex.withLock {
+                queue.list().forEach { item ->
+                    if (needsRelogin.value) return@withLock
+                    val file = File(item.imagePath)
+                    if (!file.exists()) {
+                        queue.remove(item.id)
+                        return@forEach
+                    }
+                    val result = tryUpload(
+                        file,
+                        item.workName,
+                        item.workType,
+                        item.location,
+                        item.content,
+                        item.workDate
+                    )
+                    if (result.ok) {
+                        queue.remove(item.id)
+                        runCatching { file.delete() }
+                    } else {
+                        message.value = "대기 재전송 실패: ${result.error}"
+                        if (needsRelogin.value) return@withLock
+                    }
                 }
             }
             refreshPendingCount()
-            loadRecords()
+            if (!needsRelogin.value) {
+                loadRecords()
+            }
         }
     }
 

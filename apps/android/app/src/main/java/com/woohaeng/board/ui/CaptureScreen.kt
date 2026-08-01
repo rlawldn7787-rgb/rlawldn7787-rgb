@@ -208,7 +208,10 @@ fun CaptureScreen(
             workDate = workDate,
             layout = layout,
             saveToGallery = fromCamera
-        ) { onDone() }
+        ) { ok ->
+            // 실패 시 촬영 화면에 남아 오류를 확인할 수 있게 둠
+            if (ok) onDone()
+        }
     }
 
     if (showLiveCamera) {

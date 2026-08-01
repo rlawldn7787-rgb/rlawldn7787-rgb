@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.view.WindowCompat
@@ -42,8 +43,19 @@ class MainActivity : ComponentActivity() {
             WoohaengTheme {
                 val vm: AppViewModel = viewModel()
                 val token by vm.token.collectAsState()
+                val needsRelogin by vm.needsRelogin.collectAsState()
                 val nav = rememberNavController()
                 val start = if (token.isNullOrBlank()) "login" else "records"
+
+                LaunchedEffect(token, needsRelogin) {
+                    if ((token.isNullOrBlank() || needsRelogin) &&
+                        nav.currentDestination?.route != "login"
+                    ) {
+                        nav.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
 
                 NavHost(navController = nav, startDestination = start) {
                     composable("login") {

@@ -21,7 +21,8 @@ declare global {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || "woohaeng-dev-secret";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+// 현장 작업자 로그인 유지 (재배포로 시크릿이 바뀌면 기존 토큰은 무효 → 재로그인 필요)
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "30d";
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 10);
