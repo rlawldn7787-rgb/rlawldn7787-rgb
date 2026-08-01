@@ -39,7 +39,6 @@ export default function LoginPage() {
         <div className="login-brand">
           <img src="/icon.png" alt="우행통신" />
           <h1>우행통신</h1>
-          <p>현장 보드판 기록 · 조회 · 엑셀</p>
         </div>
         <label>
           아이디
