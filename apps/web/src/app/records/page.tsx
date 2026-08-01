@@ -6,31 +6,43 @@ import { AppShell } from "@/components/AppShell";
 import { downloadExcel, fetchRecords, RecordItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
+function nowParts() {
+  const d = new Date();
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
 }
 
-function monthStart() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+function monthRange(year: number, month: number) {
+  const from = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const to = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return { from, to };
 }
+
+const YEAR_OPTIONS = (() => {
+  const current = new Date().getFullYear();
+  const years: number[] = [];
+  for (let y = current + 1; y >= current - 6; y -= 1) years.push(y);
+  return years;
+})();
+
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 export default function RecordsPage() {
   const { token } = useAuth();
-  const [from, setFrom] = useState(monthStart());
-  const [to, setTo] = useState(today());
+  const initial = nowParts();
+  const [year, setYear] = useState(initial.year);
+  const [month, setMonth] = useState(initial.month);
   const [workName, setWorkName] = useState("");
   const [records, setRecords] = useState<RecordItem[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const params = useMemo(() => {
-    const p: Record<string, string> = {};
-    if (from) p.from = from;
-    if (to) p.to = to;
+    const { from, to } = monthRange(year, month);
+    const p: Record<string, string> = { from, to };
     if (workName.trim()) p.workName = workName.trim();
     return p;
-  }, [from, to, workName]);
+  }, [year, month, workName]);
 
   async function load() {
     if (!token) return;
@@ -49,7 +61,7 @@ export default function RecordsPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, year, month]);
 
   async function onExport() {
     if (!token) return;
@@ -58,7 +70,7 @@ export default function RecordsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `우행통신_기록_${from || "all"}_${to || "all"}.xlsx`;
+      a.download = `우행통신_기록_${year}-${String(month).padStart(2, "0")}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -72,7 +84,9 @@ export default function RecordsPage() {
         <div className="panel-head">
           <div>
             <h2>현장 기록</h2>
-            <p>사진 보드판 기록을 조회하고 엑셀로 내려받으세요.</p>
+            <p>
+              {year}년 {month}월 기록을 조회하고 엑셀로 내려받으세요.
+            </p>
           </div>
           {!loading ? (
             <span className="muted">{records.length}건</span>
@@ -81,20 +95,30 @@ export default function RecordsPage() {
 
         <div className="filters">
           <label>
-            시작일
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
+            연도
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+            >
+              {YEAR_OPTIONS.map((y) => (
+                <option key={y} value={y}>
+                  {y}년
+                </option>
+              ))}
+            </select>
           </label>
           <label>
-            종료일
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
+            월
+            <select
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+            >
+              {MONTH_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {m}월
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             공사명
@@ -117,7 +141,9 @@ export default function RecordsPage() {
         {error ? <p className="error">{error}</p> : null}
         {loading ? <p className="muted">불러오는 중...</p> : null}
         {!loading && records.length === 0 ? (
-          <div className="empty-state">조건에 맞는 기록이 없습니다.</div>
+          <div className="empty-state">
+            {year}년 {month}월 조건에 맞는 기록이 없습니다.
+          </div>
         ) : null}
 
         <div className="records">
