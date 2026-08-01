@@ -30,6 +30,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
 import java.time.LocalDate
+import java.time.YearMonth
 import java.util.UUID
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -87,12 +88,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         workName: String? = null
     ) {
         val t = token.value ?: return
+        val ym = YearMonth.now()
+        val fromDate = from?.takeIf { it.isNotBlank() } ?: ym.atDay(1).toString()
+        val toDate = to?.takeIf { it.isNotBlank() } ?: ym.atEndOfMonth().toString()
         viewModelScope.launch {
             busy.value = true
             try {
-                val params = mutableMapOf<String, String>()
-                from?.takeIf { it.isNotBlank() }?.let { params["from"] = it }
-                to?.takeIf { it.isNotBlank() }?.let { params["to"] = it }
+                val params = mutableMapOf(
+                    "from" to fromDate,
+                    "to" to toDate
+                )
                 workName?.takeIf { it.isNotBlank() }?.let { params["workName"] = it }
                 records.value = ApiClient.api.records("Bearer $t", params).records
                 message.value = null

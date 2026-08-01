@@ -16,7 +16,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,16 +30,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.woohaeng.board.util.resolveMediaUrl
+import coil.compose.AsyncImage
+import java.time.LocalDate
+import java.time.YearMonth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,9 +56,33 @@ fun RecordsScreen(
     val records by vm.records.collectAsState()
     val pending by vm.pendingCount.collectAsState()
     val userName by vm.userName.collectAsState()
+    val now = remember { LocalDate.now() }
+    var year by remember { mutableIntStateOf(now.year) }
+    var month by remember { mutableIntStateOf(now.monthValue) }
     var workName by remember { mutableStateOf("") }
-    var from by remember { mutableStateOf("") }
-    var to by remember { mutableStateOf("") }
+    var yearExpanded by remember { mutableStateOf(false) }
+    var monthExpanded by remember { mutableStateOf(false) }
+
+    val yearOptions = remember(now.year) {
+        ((now.year + 1) downTo (now.year - 6)).toList()
+    }
+    val monthOptions = remember { (1..12).toList() }
+
+    fun monthBounds(): Pair<String, String> {
+        val ym = YearMonth.of(year, month)
+        return ym.atDay(1).toString() to ym.atEndOfMonth().toString()
+    }
+
+    fun reload() {
+        val (from, to) = monthBounds()
+        vm.flushQueue()
+        vm.loadRecords(from, to, workName)
+    }
+
+    LaunchedEffect(year, month) {
+        val (from, to) = monthBounds()
+        vm.loadRecords(from, to, workName)
+    }
 
     Scaffold(
         topBar = {
@@ -66,10 +97,15 @@ fun RecordsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { vm.flushQueue(); vm.loadRecords(from, to, workName) }) {
+                    IconButton(onClick = { reload() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "새로고침")
                     }
-                    IconButton(onClick = { vm.exportExcel(from, to, workName) }) {
+                    IconButton(
+                        onClick = {
+                            val (from, to) = monthBounds()
+                            vm.exportExcel(from, to, workName)
+                        }
+                    ) {
                         Icon(Icons.Default.Download, contentDescription = "엑셀")
                     }
                     IconButton(onClick = onLogout) {
@@ -91,18 +127,70 @@ fun RecordsScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = from,
-                    onValueChange = { from = it },
-                    label = { Text("시작일 YYYY-MM-DD") },
+                ExposedDropdownMenuBox(
+                    expanded = yearExpanded,
+                    onExpandedChange = { yearExpanded = it },
                     modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = to,
-                    onValueChange = { to = it },
-                    label = { Text("종료일") },
+                ) {
+                    OutlinedTextField(
+                        value = "${year}년",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("연도") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = yearExpanded,
+                        onDismissRequest = { yearExpanded = false }
+                    ) {
+                        yearOptions.forEach { y ->
+                            DropdownMenuItem(
+                                text = { Text("${y}년") },
+                                onClick = {
+                                    year = y
+                                    yearExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                ExposedDropdownMenuBox(
+                    expanded = monthExpanded,
+                    onExpandedChange = { monthExpanded = it },
                     modifier = Modifier.weight(1f)
-                )
+                ) {
+                    OutlinedTextField(
+                        value = "${month}월",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("월") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = monthExpanded,
+                        onDismissRequest = { monthExpanded = false }
+                    ) {
+                        monthOptions.forEach { m ->
+                            DropdownMenuItem(
+                                text = { Text("${m}월") },
+                                onClick = {
+                                    month = m
+                                    monthExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
             OutlinedTextField(
                 value = workName,
@@ -113,7 +201,7 @@ fun RecordsScreen(
                     .padding(top = 8.dp)
             )
             Text(
-                "필터 적용은 새로고침 버튼을 누르세요. 엑셀은 현재 필터 기준입니다.",
+                "${year}년 ${month}월 · 공사명 검색 후 새로고침. 엑셀도 같은 조건입니다.",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
